@@ -1,0 +1,29 @@
+#This script will take in a CSV file, parse it, and send the data to a web server for processing.
+#It was built to automate creating change order tickets
+
+$input = Import-Csv -Delimiter ";" -Path "input.csv"
+
+$username = "<user>"
+$pswd = "<password>"
+
+$ws=New-WebServiceProxy -uri http://<server>:8080/axis/services/USD_R11_WebService?wsdl
+$sid = $ws.login($username,$pswd)
+$sid
+
+foreach ($line in $input) {
+    $req = ""
+    $req = $ws.getHandleForUserid($sid, $line.requestor)
+
+    $newChangeHandle = ""
+    $newChangeNumber = ""
+    
+    $attr = "chg_ref_num"
+    $attrVal = "category", $line.category, `
+               "requestor", $req, `
+               "summary", $line.summary, `
+               "description", $line.description
+               
+    $ws.createChangeOrder($sid, $afu, $attrVal, "", "", $attr, [ref]$newChangeHandle, [ref]$newChangeNumber)
+}    
+    
+$ws.logout($sid)
