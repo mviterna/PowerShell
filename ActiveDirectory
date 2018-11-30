@@ -1,7 +1,7 @@
 #This powershell script will output each member of an AD Group for a particular Domain Controller
 #change the OU below to the required member. 
 
-$SearchBase = "OU=MAYO,OU=ePRISM Security Contexts,OU=External Users,DC=DC01,DC=DC02,DC=com"
+$SearchBase = "OU=<Organizational Unit 1>,OU=<Organizational Unit 2> Security Contexts,OU=External Users,DC=DC01,DC=DC02,DC=com"
 $ADGroups = Get-ADGroup -Server "server.location.com"  -Filter * -SearchBase $SearchBase | % { [ADSI]("LDAP://$_") }
 #we have to specify the -Server parameter to make sure we are not running it against the default DC
 #although this might not be the case for most people, it just was for my scenario
