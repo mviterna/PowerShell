@@ -1,0 +1,140 @@
+﻿#############################################################################
+# AUTHOR  : Mark Viterna											#
+# COMMENT : This script exports Active Directory users to a CSV					#
+#           									#
+#-----------------------------------------------------------------------	#
+# - Note - the $path and $csvfile export path must point to same directory	#
+# Also run the Powershell command window as Administrator					#
+#----------------------------------------------------------------------- 	#
+#############################################################################
+
+[CmdletBinding()]
+Param(
+   [Parameter(Mandatory=$False)]
+   [string]$path,
+	
+   [Parameter(Mandatory=$True)]
+   [string]$clientSchema
+
+	
+	#,Param([switch]$DoSomething)
+	# Now, I can run my script or function with no –DoSomething parameter and internally the $DoSomething variable will be $False. If I run the script with the –DoSomething parameter, $DoSomething gets set to $True. There’s no need to pass a value to the parameter.
+)
+
+if([string]::IsNullOrEmpty($path)){
+
+	$path = "C:\_Support"
+}
+
+Write-Host("File output path is: " + $path)
+
+#Create a variable for the date stamp in the log file
+
+$LogDate = get-date -f yyyyMMddhhmm
+
+#Define CSV and log file location variables
+#they have to be on the same location as the script
+
+$csvfile = $path + "\" + $clientSchema + "_ADUsers_$logDate.csv"
+
+#import the ActiveDirectory Module
+
+Import-Module ActiveDirectory
+
+
+#Runs the report from the Security Contexts OU - Change value of $Searchbase for your Domain Controller names and OUs
+
+
+#$SearchBase = "OU=Security Contexts,OU=OU1,OU=OU2,DC=gisqa,DC=DC1,DC=com"
+#Smaller set '
+$SearchBase = "OU="+$clientSchema+",OU=Security Contexts,OU=External Users,DC=DC1,DC=DC2,DC=com"
+#All
+#$SearchBase = "OU=Security Contexts,OU=External Users,DC=DC1,DC=DC2,DC=com"
+
+
+
+#Define variable for a server with AD web services installed on servers -  Both values have been tested below pending which domain you want the informaiton from
+
+#$ADServer = '10.20.51.55' #Specify AD server IP address
+$ADServer = 'server.site.com'
+#$ADServer = '10.20.224.132'
+
+
+#Define properties to search for - the below properties are the most common.   
+
+
+$AllADUsers = Get-ADUser -server $ADServer -searchbase $SearchBase -Filter * -Properties GivenName, Surname, DisplayName, sAMAccountName, Description, EmailAddress, whenCreated, MemberOf, organization, Enabled, lastlogondate, ObjectGUID, CanonicalName, DistinguishedName, UserPrincipalName
+
+$AllADUsers |
+Select-Object @{Label = "First Name";Expression = {$_.GivenName}},
+@{Label = "Last Name";Expression = {$_.Surname}},
+@{Label = "Display Name";Expression = {$_.DisplayName}},
+@{Label = "Logon Name";Expression = {$_.sAMAccountName}},
+@{Label = "UserPrincipalName";Expression = {$_.UserPrincipalName}},
+@{Label = "Description";Expression = {$_.Description}},
+@{Label = "Email";Expression = {$_.EmailAddress}},
+@{Label = "WhenCreated";Expression = {$_.whenCreated}},
+@{Label = "MemberOf";Expression = {$_.MemberOf}},
+@{Label = "Organization";Expression = {$_.organization}},
+@{Label = "ObjectGUID";Expression = {$_.ObjectGUID}},
+@{Label = "ePRISMGUID";Expression = {Convert-OctetStringToGuid($_.ObjectGUID -replace '-', '')}},
+@{Label = "CanonicalName";Expression = {$_.CanonicalName}},
+@{Label = "DistinguishedName";Expression = {$_.DistinguishedName}},
+@{Label = "Account Status";Expression = {if (($_.Enabled -eq 'TRUE')  ) {'Enabled'} Else {'Disabled'}}}, # the 'if statement# replaces $_.Enabled
+@{Label = "Last LogOn Date";Expression = {$_.lastlogondate}} | 
+Sort-Object -Property DisplayName |
+
+#Export CSV report
+
+Export-Csv -Path $csvfile -NoTypeInformation
+
+function Convert-GuidToOctetString
+{
+    param
+    (
+        [String]$Guid
+    );
+
+    [Guid]$g = New-Object Guid;
+    if([Guid]::TryParse($Guid, [ref]$g))
+    {
+        return ([System.String]::Join('', ($g.ToByteArray() | ForEach-Object { $_.ToString('x2') })).ToUpper());
+    }
+    else
+    {
+        throw Exception("Input string is not a valid GUID")
+    }
+
+}
+
+function Convert-OctetStringToGuid
+{
+    param
+    (
+        [String]$Guid
+    );
+
+    if(32 -eq $guid.Length)
+    {
+        [UInt32]$a = [Convert]::ToUInt32(($guid.Substring(6, 2) + $guid.Substring(4, 2) + $guid.Substring(2, 2) + $guid.Substring(0, 2)), 16)
+        [UInt16]$b = [Convert]::ToUInt16(($guid.Substring(10, 2) + $guid.Substring(8, 2)), 16)
+        [UInt16]$c = [Convert]::ToUInt16(($guid.Substring(14, 2) + $guid.Substring(12, 2)), 16)
+
+        [Byte]$d = ([Convert]::ToUInt16($guid.Substring(16, 2), 16) -as [byte])
+        [Byte]$e = ([Convert]::ToUInt16($guid.Substring(18, 2), 16) -as [byte])
+        [Byte]$f = ([Convert]::ToUInt16($guid.Substring(20, 2), 16) -as [byte])
+        [Byte]$g = ([Convert]::ToUInt16($guid.Substring(22, 2), 16) -as [byte])
+        [Byte]$h = ([Convert]::ToUInt16($guid.Substring(24, 2), 16) -as [byte])
+        [Byte]$i = ([Convert]::ToUInt16($guid.Substring(26, 2), 16) -as [byte])
+        [Byte]$j = ([Convert]::ToUInt16($guid.Substring(28, 2), 16) -as [byte])
+        [Byte]$k = ([Convert]::ToUInt16($guid.Substring(30, 2), 16) -as [byte])
+
+        [Guid]$g = New-Object Guid($a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k)
+
+        return $g.Guid;
+    }
+    else
+    {
+        throw Exception("Input string is not a valid octet string GUID")
+    }
+}
