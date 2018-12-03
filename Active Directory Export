@@ -77,7 +77,7 @@ Select-Object @{Label = "First Name";Expression = {$_.GivenName}},
 @{Label = "MemberOf";Expression = {$_.MemberOf}},
 @{Label = "Organization";Expression = {$_.organization}},
 @{Label = "ObjectGUID";Expression = {$_.ObjectGUID}},
-@{Label = "ePRISMGUID";Expression = {Convert-OctetStringToGuid($_.ObjectGUID -replace '-', '')}},
+@{Label = "eGUID";Expression = {Convert-OctetStringToGuid($_.ObjectGUID -replace '-', '')}},
 @{Label = "CanonicalName";Expression = {$_.CanonicalName}},
 @{Label = "DistinguishedName";Expression = {$_.DistinguishedName}},
 @{Label = "Account Status";Expression = {if (($_.Enabled -eq 'TRUE')  ) {'Enabled'} Else {'Disabled'}}}, # the 'if statement# replaces $_.Enabled
